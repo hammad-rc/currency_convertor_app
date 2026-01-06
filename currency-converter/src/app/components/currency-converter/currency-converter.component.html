@@ -1,0 +1,145 @@
+<div class="converter-container">
+  <mat-card class="converter-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>currency_exchange</mat-icon>
+        Currency Converter
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="converterForm" (ngSubmit)="convert()" class="converter-form">
+        <!-- Amount Input -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>
+            <mat-icon class="field-icon">attach_money</mat-icon>
+            Amount
+          </mat-label>
+          <input matInput type="number" formControlName="amount" placeholder="Enter amount" min="0.01" step="0.01">
+          <mat-error *ngIf="converterForm.get('amount')?.hasError('required')">
+            Amount is required
+          </mat-error>
+          <mat-error *ngIf="converterForm.get('amount')?.hasError('min')">
+            Amount must be greater than 0
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Currency Selection Row -->
+        <div class="currency-row">
+          <!-- From Currency -->
+          <mat-form-field appearance="outline" class="currency-field">
+            <mat-label>From</mat-label>
+            <mat-select formControlName="fromCurrency" [disabled]="isLoadingCurrencies">
+              <mat-option *ngFor="let currency of currencies" [value]="currency.code">
+                {{ currency.code }} - {{ currency.name }}
+              </mat-option>
+            </mat-select>
+            <mat-spinner *ngIf="isLoadingCurrencies" diameter="20" class="spinner-inline"></mat-spinner>
+          </mat-form-field>
+
+          <!-- Swap Button -->
+          <button mat-icon-button type="button" (click)="swapCurrencies()" class="swap-button" [disabled]="isLoading">
+            <mat-icon>swap_horiz</mat-icon>
+          </button>
+
+          <!-- To Currency -->
+          <mat-form-field appearance="outline" class="currency-field">
+            <mat-label>To</mat-label>
+            <mat-select formControlName="toCurrency" [disabled]="isLoadingCurrencies">
+              <mat-option *ngFor="let currency of currencies" [value]="currency.code">
+                {{ currency.code }} - {{ currency.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Historical Date Picker -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>
+            <mat-icon class="field-icon">calendar_today</mat-icon>
+            Historical Date (Optional)
+          </mat-label>
+          <input matInput [matDatepicker]="picker" formControlName="historicalDate" [max]="getMaxDate()" [min]="getMinDate()">
+          <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker #picker></mat-datepicker>
+          <mat-hint>
+            <mat-icon class="hint-icon">info</mat-icon>
+            Leave empty for latest rates
+          </mat-hint>
+        </mat-form-field>
+
+        <!-- Convert Button -->
+        <button mat-raised-button color="primary" type="submit" class="convert-button" [disabled]="converterForm.invalid || isLoading">
+          <mat-spinner *ngIf="isLoading" diameter="20" class="spinner-inline"></mat-spinner>
+          <span *ngIf="!isLoading">Convert</span>
+          <span *ngIf="isLoading">Converting...</span>
+        </button>
+
+        <!-- Error Message -->
+        <div *ngIf="errorMessage" class="error-message">
+          <mat-icon>error</mat-icon>
+          {{ errorMessage }}
+        </div>
+
+        <!-- Conversion Result -->
+        <div *ngIf="convertedAmount !== null && !errorMessage" class="result-card">
+          <div class="result-header">
+            <mat-icon class="result-icon">check_circle</mat-icon>
+            <span class="result-label">Conversion Result</span>
+          </div>
+          <div class="result-amount">
+            <span class="result-value">
+              {{ convertedAmount | number:'1.2-2' }}
+            </span>
+            <span class="result-currency">{{ converterForm.get('toCurrency')?.value }}</span>
+          </div>
+          <div class="result-rate" *ngIf="exchangeRate">
+            <mat-icon class="rate-icon">trending_up</mat-icon>
+            <span>1 {{ converterForm.get('fromCurrency')?.value }} = {{ exchangeRate | number:'1.4-4' }} {{ converterForm.get('toCurrency')?.value }}</span>
+          </div>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Conversion History -->
+  <mat-card class="history-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>history</mat-icon>
+        Conversion History
+      </mat-card-title>
+      <button mat-icon-button (click)="clearHistory()" *ngIf="conversionHistory.length > 0" matTooltip="Clear History">
+        <mat-icon>delete</mat-icon>
+      </button>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div *ngIf="conversionHistory.length === 0" class="no-history">
+        <mat-icon>inbox</mat-icon>
+        <p>No conversion history yet. Start converting to see your history here!</p>
+      </div>
+
+      <mat-list *ngIf="conversionHistory.length > 0" class="history-list">
+        <mat-list-item *ngFor="let record of conversionHistory" class="history-item">
+          <div class="history-content">
+            <div class="history-main">
+              <span class="history-amount">{{ record.amount | number:'1.2-2' }} {{ record.fromCurrency }}</span>
+              <mat-icon class="arrow-icon">arrow_forward</mat-icon>
+              <span class="history-amount">{{ record.convertedAmount | number:'1.2-2' }} {{ record.toCurrency }}</span>
+            </div>
+            <div class="history-details">
+              <mat-chip *ngIf="record.isHistorical" color="accent">
+                <mat-icon>calendar_today</mat-icon>
+                {{ record.historicalDate }}
+              </mat-chip>
+              <span class="history-date">{{ formatDateTime(record.timestamp) }}</span>
+              <span class="history-rate">Rate: {{ record.rate | number:'1.4-4' }}</span>
+            </div>
+          </div>
+        </mat-list-item>
+        <mat-divider></mat-divider>
+      </mat-list>
+    </mat-card-content>
+  </mat-card>
+</div>
